@@ -24,7 +24,7 @@ def pairwise_distance_estimator (node_to_run_on):
 
         print ("Running tn93 on %s and %s [%s] with threshold = %g using node %s subsampling rate % g (queue size = %d)" % (in_path1, in_path2, gene, threshold, node_to_run_on, subsample, task_queue.qsize()), file = sys.stderr)
         try:
-            process = subprocess.Popen (['/usr/bin/bpsh', node_to_run_on, '/usr/local/bin/tn93', '-t', str(threshold), '-l', '200', '-u', str(subsample), '-c', '-q', '-s', in_path2, in_path1], stdin = subprocess.DEVNULL, stderr = subprocess.PIPE, stdout = subprocess.PIPE, universal_newlines = True) 
+            process = subprocess.Popen (['/usr/bin/bpsh', node_to_run_on, '/usr/local/bin/tn93', '-t', str(threshold), '-l', '150', '-u', str(subsample), '-c', '-q', '-s', in_path2, in_path1], stdin = subprocess.DEVNULL, stderr = subprocess.PIPE, stdout = subprocess.PIPE, universal_newlines = True) 
             out, json_out = process.communicate ()
             full_json = json.loads(json_out)
             baseline_json = {}

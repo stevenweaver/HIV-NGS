@@ -1,4 +1,4 @@
-import os, argparse, re, sys
+import os, argparse, re, sys, copy
 import subprocess, time, csv
 import json, operator
 import itertools, datetime
@@ -12,8 +12,11 @@ def describe_vector (vector):
     else:
         return {'count': l, 'min': None, 'max': None, 'mean': None, 'median':  None, "IQR": [None,None] }
        
+def ensure_key (dict, key, def_val = {}):
+    if key not in dict:
+        dict[key] = copy.copy (def_val)
     
-def main (ngs_cache, pairwise_cache, csv_writer, short_format):
+def main (ngs_cache, pairwise_cache, csv_writer, short_format, spool_histogram):
     
     print ("Loaded cache info on %d NGS runs" % len (ngs_cache), file = sys.stderr)                    
     print ("Loaded cache info on %d pairwise comparisons" % len (pairwise_cache), file = sys.stderr)            
@@ -21,8 +24,6 @@ def main (ngs_cache, pairwise_cache, csv_writer, short_format):
     id_to_path = {}
     ids_seen = set ()
     if short_format:
-    
-    
         for path,d in ngs_cache.items():
             if type (d) == dict:   
                 id = int(d['id'])
@@ -44,11 +45,14 @@ def main (ngs_cache, pairwise_cache, csv_writer, short_format):
     #test_pid = set (['050102333', '050108085'])
     #test_runs = set ()
     
-    tbyg = {'gag' : "1.5%", 'rt' : "1.5%", 'env' : "5%"}
+    tbyg = {'gag' : "1.5%", 'rt' : "1.5%", 'env' : "3%"}
     
     unique_pids = set ()
     threshold   = 0.06
-
+    distribution_by_class = {}
+    enumerable_keys = ["0.5%", "1%", "1.5%", "2%", "2.5%", "3%", "3.5%", "4%", "4.5%", "5%"]
+    source_by_tag   = {}
+    
     for pair,value in pairwise_cache.items():
         if value is not None and value["Pair Count"] > 10000:
             
@@ -61,6 +65,12 @@ def main (ngs_cache, pairwise_cache, csv_writer, short_format):
                 pids  = [ngs_cache[id_to_path[k][0]]['patient_id'] for k in paths]
                 dates = [ngs_cache[id_to_path[k][0]]['sample_date'] for k in paths]
                 gene = id_to_path[paths[0]][1]
+                
+            source1 = os.path.dirname(os.readlink(ngs_cache[id_to_path[paths[0]][0]]['in_fasta']))
+            source2 = os.path.dirname(os.readlink(ngs_cache[id_to_path[paths[1]][0]]['in_fasta']))
+            
+            source_by_tag [(pids[0], dates[0])] = source1
+            source_by_tag [(pids[1], dates[1])] = source2
             
             if pids[0] < pids[1]:
                 tag = (pids[0], pids[1], dates[0], dates[1])
@@ -68,20 +78,41 @@ def main (ngs_cache, pairwise_cache, csv_writer, short_format):
                 tag = (pids[1], pids[0], dates[1], dates[0])
             else:
                 tag = (pids[0],pids[0], min (dates), max(dates))
+              
+            if spool_histogram:    
+                if pids[0] == pids[1]:
+                    if dates[0] == dates[1]:
+                        comparison_class = "Technical Replicate"
+                        #if value["Mean"] > tbyg[gene]: # internal consistence check fail
+                        #    print (pair, value["Mean"])
+                    else:
+                        comparison_class = "Same individual, different timepoint"
+                else:
+                    comparison_class = "Different individuals"
+
+            
+                ensure_key (distribution_by_class, comparison_class)
+                ensure_key (distribution_by_class[comparison_class], gene)
+                running_sum = 0
+                for d in enumerable_keys:
+                    ensure_key (distribution_by_class[comparison_class][gene], d, [])
+                    distribution_by_class[comparison_class][gene][d].append ((value[d] - running_sum) /  value ["Pair Count"])
+                    running_sum = value[d]
+                                          
         
             unique_pids.update ((pids[0], pids[1]))
          
-            if tag not in processed:
-                processed[tag] = {}
-                
-            if gene not in  processed[tag]:
-                processed[tag][gene] = []
-        
+            ensure_key (processed, tag)
+            ensure_key (processed[tag], gene, [])
+                 
             link_ratio = value[tbyg[gene]] / value ["Pair Count"]
             processed[tag][gene].append (link_ratio)
             #if link_ratio > 0.06:
             #    print (",".join(paths), link_ratio)
     
+    if spool_histogram:
+        json.dump (distribution_by_class, spool_histogram, indent = 1 )
+        print (distribution_by_class["Same individual, different timepoint"]["rt"]["0.5%"])
 
     replicates = {'rt' : [], 'gag': [], 'env' : []}
     key_gene = 'rt'
@@ -89,11 +120,25 @@ def main (ngs_cache, pairwise_cache, csv_writer, short_format):
     
     for t,v in processed.items():
         if t[0] != t[1] and key_gene in v and max (v[key_gene]) >= threshold:
+            if source_by_tag[(t[0],t[2])] == source_by_tag[(t[1],t[3])]:
+                #print ("Same plate for ", t)
+                continue
+                
+            if csv_writer is not None:
+                csv_writer.writerow (['|'.join ([t[0],aeh_time (t[2])]), '|'.join ([t[1],aeh_time (t[3])]), 0.01499999 if len ([k for k in v[key_gene] if k >= threshold]) > 0 else 0.05])      
+                
+            continue
+            
             ratio = {key_gene : len ([k for k in v[key_gene] if k >= threshold]) / len (v[key_gene]) }
+                        
             repl = len (v[key_gene]) > 1
             if repl:
                 replicates[key_gene].append (ratio[key_gene])
             all_calls[key_gene].append (ratio[key_gene])
+            
+            print (all_calls)
+            sys.exit (0)
+            
             for sg in ['env','gag','rt']:
                 if sg == key_gene: continue   
                 if sg in v:
@@ -111,13 +156,14 @@ def main (ngs_cache, pairwise_cache, csv_writer, short_format):
             '''   
             
             non_null = [k for k in ratio.values() if k is not None]
+            print (ratio)
             if csv_writer is not None:
                 csv_writer.writerow (['|'.join ([t[0],aeh_time (t[2])]), '|'.join ([t[1],aeh_time (t[3])]), 0.01499999 if len (non_null) > 2 and len ([k for k in non_null if k >= 0.5])>= 2 else 0.05])      
             
             #print (ratio)
                 
     
-    print ("%d unique PIDs" % len (unique_pids))
+    print ("Loaded data on %d unique PIDs" % len (unique_pids))
     
     confirmed = {'or' : [0,0]}
     
@@ -180,6 +226,14 @@ if __name__ == '__main__':
         default=False
     )
     
+
+    parser.add_argument(
+        '-t', '--histogram',
+        help='report distance densities by comparison class',
+        type=argparse.FileType ('w'),
+        default=False
+    )
+
     args = None
     retcode = -1
     args = parser.parse_args()
@@ -187,9 +241,9 @@ if __name__ == '__main__':
     csv_writer = None
     if args.distances:
         csv_writer = csv.writer (args.distances)
-        csv_writer.writerow (['ID1','ID2','Distance'])
+        csv_writer.writerow (['ID1','ID2','Distance','rt','rt-replicates','rt-support','gag','gag-replicates','gag-support','env','env-replicates','env-support'])
         
-    retcode = main(json.load (args.input), json.load (args.cache),csv_writer, args.short)
+    retcode = main(json.load (args.input), json.load (args.cache),csv_writer, args.short, args.histogram)
     
     sys.exit(retcode)
 

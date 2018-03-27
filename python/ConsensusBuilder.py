@@ -119,7 +119,7 @@ if __name__ == '__main__':
                                         with open (data['json_rates'], 'r') as fh:
                                             c_seq = consensus (json.load (fh), settings.cutoff, settings.truncate)
                                             no_gap = c_seq.replace ('-','')
-                                            if len (no_gap) > settings.min_length and len (c_seq) - len (no_gap) < settings.min_length*0.3:
+                                            if len (no_gap) > settings.min_length:# and len (c_seq) - len (no_gap) < settings.min_length*0.3:
                                                 print (">%s\n%s" % (make_label (v, gene, "consensus"), c_seq))
                                 
                 except:

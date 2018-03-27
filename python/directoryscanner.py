@@ -60,10 +60,10 @@ ntr.set_cache_flags(check_file_paths, check_file_paths_diversity)
 known_refs = [
     os.path.normpath(os.path.join(path_to_this_file, k)) for k in [
         '../data/rt.fas', '../data/gag_p24.fas', '../data/env_C2V5.fas',
-        '../data/pr.fas', '../data/hcv1bcore.fas'
+        '../data/pr.fas', '../data/hcv1bcore.fas', '../data/int.fas'
     ]
 ]
-known_genes = ['rt', 'gag', 'env', 'pr', 'hcv1bcore']
+known_genes = ['rt', 'gag', 'env', 'pr', 'hcv1bcore', 'int']
 genes = []
 
 # cache_file is a file storing cached information from update_global_record,
@@ -225,15 +225,15 @@ def collapse_translate_reads(in_path, out_path):
 
     try:
         subprocess.check_call(
-            ['/opt/share/python3.3/seqmerge', in_path, merged_out],
+            ['/opt/python-3.4.3/bin/seqmerge', in_path, merged_out],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
         )
         subprocess.check_call(
-            ['/opt/share/python3.3/translate', in_path, translated_prot],
+            ['/opt/python-3.4.3/bin/translate', in_path, translated_prot],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
         )
         subprocess.check_call(
-            ['/opt/share/python3.3/seqmerge', translated_prot, merged_out_prot],
+            ['/opt/python-3.4.3/bin/seqmerge', translated_prot, merged_out_prot],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
         )
         os.remove(translated_prot)
@@ -766,7 +766,7 @@ def run_tropism_prediction(env_gene, out_path, node):
                 # Use bpsh to call idepi on the input env_gene and the V3 model.
 
                 call_array = [
-                    '/usr/bin/bpsh', str(node), '/opt/share/python3.3/idepi',
+                    '/usr/bin/bpsh', str(node), '/opt/python-3.4.3/bin/idepi',
                     'predict', v3_model, env_gene
                 ]
             #print(call_array)
