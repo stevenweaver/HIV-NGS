@@ -1,0 +1,104 @@
+body {
+  font-family: "Tahoma", "Arial", san-serif;
+  font-size: 12px;
+}
+
+.area {
+  fill: steelblue;
+}
+
+.area_maj {
+  fill: red;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+.axis {
+    font: 9px sans-serif;
+}
+.area {
+  fill: steelblue;
+}
+
+.legend {
+    font: 12px sans-serif;
+}
+
+.line {
+  fill: none;
+  stroke: black;
+  stroke-width: 1px;
+}
+
+.line-hist {
+  fill: none;
+  stroke: black;
+  stroke-width: 4px;
+}
+
+.bar rect {
+  fill: #ccc;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.div_span_ns rect {
+  fill: #FF0000;
+  stroke: #000;
+  fill-opacity: 0.3;
+  stroke-width: 1px;
+  shape-rendering: crispEdges;
+}
+
+.div_span_s rect {
+  fill: #00FF00;
+  stroke: #000;
+  fill-opacity: 0.3;
+  stroke-width: 1px;
+  shape-rendering: crispEdges;
+}
+
+
+.brush .extent {
+  stroke: #fff;
+  fill-opacity: .125;
+  shape-rendering: crispEdges;
+}
+
+.view-compartmentalization-sel {
+    color: #FF0000;
+}
+
+._evo_area {
+  fill: steelblue;
+}
+
+._pos_dS {
+  fill: #2E66FF;
+}
+
+._pos_dN {
+  fill: #FFB314;
+}
+
+._evo_legend {
+    font: 12px sans-serif;
+}
+
+._evo_line {
+  fill: none;
+  stroke: red;
+  stroke-width: 4px;
+}
+
+._evo_symbol {
+  fill: #EEEEEE;
+  stroke: black;
+  stroke-opacity: 1.0;
+  stroke-width: 1.5px;
+  fill-opacity :1.0;
+}
